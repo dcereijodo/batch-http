@@ -55,6 +55,15 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
       response => response.parseJson.asJsObject.fields("response") shouldBe a[JsArray]
     }
 
+    whenReady(makeRequestAndHandle("""{"query": {"post_id": 1}, "path": "/comments", "context": "CvKL8"}""", connectionPool)) {
+      response => {
+        val responseAsJson = response.parseJson.asJsObject
+        val fields = responseAsJson.fields
+        fields("response") shouldBe a[JsArray]
+        fields("context") shouldBe JsString("CvKL8")
+      }
+    }
+
   }
 
 }

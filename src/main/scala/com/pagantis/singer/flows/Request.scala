@@ -22,12 +22,12 @@ object Request {
     val message = line.parseJson
     val fields = message.asJsObject.fields
 
-    (fields.get("query"), fields.get("body"), fields.get("path")) match {
+    (fields.get("query"), fields.get("body"), fields.get("path"), fields.get("context")) match {
 
-      case (Some(_), Some(_), _) =>
+      case (Some(_), Some(_), _, _) =>
         throw new Exception
 
-      case (Some(jsonQueryParams), None, optPath) =>
+      case (Some(jsonQueryParams), None, optPath, optContext) =>
 
         val asStringMap = jsonQueryParams
           .asJsObject
@@ -39,10 +39,13 @@ object Request {
 
         val optStringPath = optPath collect { case JsString(value) => value }
 
-        GetRequest(asStringMap ++ extraParams, optStringPath)
+        GetRequest(asStringMap ++ extraParams, optStringPath, optContext)
 
-      case (None, Some(jsonBody), optPath) =>
-        PostRequest(jsonBody.asJsObject)
+      case (None, Some(jsonBody), optPath, optContext) =>
+
+        val optStringPath = optPath collect { case JsString(value) => value }
+
+        PostRequest(jsonBody.asJsObject, optStringPath, optContext)
     }
 
   }
@@ -85,7 +88,7 @@ trait Request {
 
 }
 
-case class GetRequest(queryParams: Map[String, String], path: Option[String] = None) extends Request {
+case class GetRequest(queryParams: Map[String, String], path: Option[String] = None, context: Option[JsValue]) extends Request {
 
   override def toAkkaRequest: HttpRequest = {
     val query = Query(queryParams)
@@ -102,16 +105,24 @@ case class GetRequest(queryParams: Map[String, String], path: Option[String] = N
 
     val noSecrets = queryParams.filter(param => !Request.extraParams.contains(param._1))
 
-    JsObject(
-      "request" -> JsObject(noSecrets.map{ case (key, value) => (key, JsString(value))}),
-      "response" -> response
-    ).compactPrint
+    val requestAndResponse =
+      Map(
+        "request" -> JsObject(noSecrets.map{ case (key, value) => (key, JsString(value))}),
+        "response" -> response
+      )
+
+    val outputKeys = context match {
+      case Some(ctx) => requestAndResponse + ("context" -> ctx)
+      case None => requestAndResponse
+    }
+
+    JsObject(outputKeys).compactPrint
 
   }
 
 }
 
-case class PostRequest(body: JsObject) extends Request {
+case class PostRequest(body: JsObject, path: Option[String] = None, context: Option[JsValue]) extends Request {
 
   override def toAkkaRequest: HttpRequest = ???
 
