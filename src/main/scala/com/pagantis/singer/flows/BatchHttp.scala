@@ -15,6 +15,9 @@ object BatchHttp extends App {
 
   val clazz = getClass.getName
 
+  val inputStream = System.in
+  if(inputStream.available() == 0) sys.exit(1)
+
   // init actor system, loggers and execution context
   implicit val system: ActorSystem = ActorSystem("BatchHttp")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -37,7 +40,7 @@ object BatchHttp extends App {
 
   val flowComputation =
     StreamConverters
-      .fromInputStream(() => System.in)
+      .fromInputStream(() => inputStream)
       .log(clazz)
       .mapConcat(_.utf8String.split("\n").toList)
       .log(clazz)

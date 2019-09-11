@@ -82,11 +82,12 @@ sbt run
 ```
 
 The `packageBin` target from the [sbt-native-packager](https://www.scala-sbt.org/sbt-native-packager/) is creating a ZIP file
-that contains all depedencies and executables. For running from the distribution package:
+that contains all dependencies and executables. For running from the distribution package:
 
 ```console
 $ unzip target/universal/batch-http-<version>.zip
 $ batch-http-<version>/bin/batch-http -h
+$ echo '{"body": {"userId": 1, "title": "foo", "body": "bar"}, "path": "/posts", "context": "CvKL8"}' | batch-http-<version>/bin/batch-http -Dflow.endpoint=jsonplaceholder.typicode.com 2&> /dev/null
 ```
 
 ## Integration Tests
