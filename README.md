@@ -62,6 +62,9 @@ the object as URL parameters. `GET` method will be used.
 - If a `body` object is passed in the JSON, a request will be created with the contents of `body`
 in the request body. `POST` method will be used.
 
+Whatever is passed in the input JSON in the `context` key it will be propagated unaltered to the result.
+This allows annotating input records with metadata which will not be used in the request ([#3](https://github.com/dcereijodo/batch-http/issues/3))
+
 ## Configuration
 You can find examples and descriptions for all configurations supported by `batch-http` in the [sample configuration file](src/main/resources/application.conf). All this properties can be overridden on invocation by providing appropriate [JVM arguments](https://github.com/lightbend/config).
 
