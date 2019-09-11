@@ -27,14 +27,14 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
   implicit val standardLogger: LoggingAdapter = Logging(system, clazz)
   implicit val ec: ExecutionContextExecutor = system.dispatcher
 
-  val connectionPool = Http().cachedHostConnectionPoolHttps[Request]("jsonplaceholder.typicode.com")
+  implicit val connectionPool = Http().cachedHostConnectionPoolHttps[Request]("jsonplaceholder.typicode.com")
 
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
 
   import Request._
 
-  def makeRequestAndHandle(line: String, connectionPool: Flow[(HttpRequest, Request),(Try[HttpResponse], Request), HostConnectionPool]) = {
+  def makeRequestAndHandle(line: String)(implicit connectionPool: Flow[(HttpRequest, Request),(Try[HttpResponse], Request), HostConnectionPool]) = {
 
     Source.single(line)
       .map(
@@ -51,16 +51,45 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
 
   "Request" should "get comments by post_id" in {
 
-    whenReady(makeRequestAndHandle("""{"query": {"post_id": 1}, "path": "/comments"}""", connectionPool)) {
+    whenReady(makeRequestAndHandle("""{"query": {"post_id": 1}, "path": "/comments"}""")) {
       response => response.parseJson.asJsObject.fields("response") shouldBe a[JsArray]
     }
 
-    whenReady(makeRequestAndHandle("""{"query": {"post_id": 1}, "path": "/comments", "context": "CvKL8"}""", connectionPool)) {
+    whenReady(makeRequestAndHandle("""{"query": {"post_id": 1}, "path": "/comments", "context": "CvKL8"}""")) {
       response => {
         val responseAsJson = response.parseJson.asJsObject
         val fields = responseAsJson.fields
+        fields("request") shouldBe JsObject(
+          "query" -> JsObject(
+            "post_id" -> JsNumber(1)
+          )
+        )
         fields("response") shouldBe a[JsArray]
         fields("context") shouldBe JsString("CvKL8")
+      }
+    }
+
+  }
+
+  "Request" should "post posts with user_id" in {
+
+    whenReady(makeRequestAndHandle("""{"body": {"userId": 1, "title": "foo", "body": "bar"}, "path": "/posts"}""")) {
+      response => {
+        val responseAsJson = response.parseJson.asJsObject
+        val fields = responseAsJson.fields
+        fields("request") shouldBe JsObject(
+          "body" -> JsObject(
+            "title" -> JsString("foo"),
+            "body" -> JsString("bar"),
+            "userId" -> JsNumber(1)
+          )
+        )
+        fields("response") shouldBe JsObject(
+          "id" -> JsNumber(101),
+          "title" -> JsString("foo"),
+          "body" -> JsString("bar"),
+          "userId" -> JsNumber(1)
+        )
       }
     }
 

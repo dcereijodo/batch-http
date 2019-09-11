@@ -1,6 +1,6 @@
 package com.pagantis.singer.flows
 
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, Uri}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest, HttpResponse, Uri}
 import akka.http.scaladsl.model.Uri.Query
 import akka.stream.Materializer
 import akka.util.ByteString
@@ -32,14 +32,10 @@ object Request {
         val asStringMap = jsonQueryParams
           .asJsObject
           .fields
-          .collect {
-            case (key, JsString(value)) => (key, value)
-            case (key, JsNumber(value)) => (key, value.toString)
-          }
 
         val optStringPath = optPath collect { case JsString(value) => value }
 
-        GetRequest(asStringMap ++ extraParams, optStringPath, optContext)
+        GetRequest(asStringMap ++ extraParams.map(pair => (pair._1, JsString(pair._2))), optStringPath, optContext)
 
       case (None, Some(jsonBody), optPath, optContext) =>
 
@@ -82,32 +78,19 @@ object Request {
 
 trait Request {
 
+  val context: Option[JsValue]
+
   def toAkkaRequest: HttpRequest
 
-  def toLine(response: JsValue): String
+  def outputRequest: JsObject
 
-}
+  def toLine(response: JsValue): String = {
 
-case class GetRequest(queryParams: Map[String, String], path: Option[String] = None, context: Option[JsValue]) extends Request {
-
-  override def toAkkaRequest: HttpRequest = {
-    val query = Query(queryParams)
-    HttpRequest(
-      method = HttpMethods.GET,
-      uri = path match {
-        case None => Uri(Request.defaultPath).withQuery(query)
-        case Some(path) => Uri(path).withQuery(query)
-      }
-    )
-  }
-
-  override def toLine(response: JsValue): String = {
-
-    val noSecrets = queryParams.filter(param => !Request.extraParams.contains(param._1))
+    val request = outputRequest
 
     val requestAndResponse =
       Map(
-        "request" -> JsObject(noSecrets.map{ case (key, value) => (key, JsString(value))}),
+        "request" -> request,
         "response" -> response
       )
 
@@ -117,15 +100,51 @@ case class GetRequest(queryParams: Map[String, String], path: Option[String] = N
     }
 
     JsObject(outputKeys).compactPrint
+  }
 
+}
+
+case class GetRequest(queryParams: Map[String, JsValue], path: Option[String] = None, context: Option[JsValue]) extends Request {
+
+  override def toAkkaRequest: HttpRequest = {
+
+    val query = Query(
+      queryParams
+        .collect {
+          case (key, JsString(value)) => (key, value)
+          case (key, JsNumber(value)) => (key, value.toString)
+      }
+    )
+
+    HttpRequest(
+      method = HttpMethods.GET,
+      uri = path match {
+        case None => Uri(Request.defaultPath).withQuery(query)
+        case Some(path) => Uri(path).withQuery(query)
+      }
+    )
+  }
+
+  override def outputRequest: JsObject = {
+
+    val noSecrets = queryParams.filter(param => !Request.extraParams.contains(param._1))
+
+    JsObject("query" -> JsObject(noSecrets))
   }
 
 }
 
 case class PostRequest(body: JsObject, path: Option[String] = None, context: Option[JsValue]) extends Request {
 
-  override def toAkkaRequest: HttpRequest = ???
+  override def toAkkaRequest: HttpRequest = HttpRequest(
+    method = HttpMethods.POST,
+    uri = path match {
+      case None => Uri(Request.defaultPath)
+      case Some(path) => Uri(path)
+    },
+    entity = HttpEntity(ContentTypes.`application/json`, body.compactPrint)
+  )
 
-  override def toLine(response: JsValue): String = ???
+  override def outputRequest: JsObject = JsObject("body" -> body)
 
 }
