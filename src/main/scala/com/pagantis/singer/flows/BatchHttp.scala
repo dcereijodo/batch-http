@@ -15,8 +15,11 @@ object BatchHttp extends App {
 
   val clazz = getClass.getName
 
+  if(args.length > 0) {
+    println("Reading from file not yet supported, try 'cat your-file > batch-http'")
+    sys.exit(1)
+  }
   val inputStream = System.in
-  if(inputStream.available() == 0) sys.exit(1)
 
   // init actor system, loggers and execution context
   implicit val system: ActorSystem = ActorSystem("BatchHttp")
