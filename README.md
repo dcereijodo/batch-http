@@ -1,4 +1,4 @@
-# BatchHttp [![CircleCI](https://circleci.com/gh/dcereijodo/batch-http.svg?style=svg&circle-token=d196d5b828e9e0debb5c25f04e7279c1f342d675)](https://circleci.com/gh/dcereijodo/batch-http)
+# BatchHttp [![CircleCI](https://circleci.com/gh/digitalorigin/batch-http.svg?style=svg&circle-token=d196d5b828e9e0debb5c25f04e7279c1f342d675)](https://circleci.com/gh/digitalorigin/batch-http)
 A tool for processing data batches through a REST API. It reads the `stdin` for JSON lines, converts each line to an HTTP call and
 then it makes the call. Finally it prints both the input line and the response to the `stdout`.
 
