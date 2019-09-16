@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.StreamConverters
+import akka.stream.scaladsl.{JsonFraming, StreamConverters}
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration.Duration
@@ -31,6 +31,7 @@ object BatchHttp extends App {
 
   val endpoint = config.getString("flow.endpoint")
   val parallelism = config.getInt("flow.parallelism")
+  val frameLength = config.getInt("flow.frame_length")
 
   val startTime = System.nanoTime()
 
@@ -44,6 +45,7 @@ object BatchHttp extends App {
   val flowComputation =
     StreamConverters
       .fromInputStream(() => inputStream)
+      .via(JsonFraming.objectScanner(frameLength))
       .log(clazz)
       .mapConcat(_.utf8String.split("\n").toList)
       .log(clazz)
