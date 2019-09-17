@@ -1,5 +1,8 @@
 package com.pagantis.singer.flows
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest, HttpResponse, Uri}
 import akka.http.scaladsl.model.Uri.Query
 import akka.stream.Materializer
@@ -52,7 +55,7 @@ object Request {
 
     triedResponse match {
       case (Success(response), request) =>
-        Request.fromHttpResponse(response).map(request.toLine)
+        Request.fromHttpResponse(response).map(request.toLine(_))
       case (Failure(exception), _) => throw exception
     }
 
@@ -84,14 +87,15 @@ trait Request {
 
   def outputRequest: JsObject
 
-  def toLine(response: JsValue): String = {
+  def toLine(response: JsValue, extractedAt: LocalDateTime = LocalDateTime.now()): String = {
 
     val request = outputRequest
 
     val requestAndResponse =
       Map(
         "request" -> request,
-        "response" -> response
+        "response" -> response,
+        "extracted_at" -> JsString(extractedAt.format(DateTimeFormatter.ISO_DATE_TIME))
       )
 
     val outputKeys = context match {

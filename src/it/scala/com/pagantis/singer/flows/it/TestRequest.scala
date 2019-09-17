@@ -1,5 +1,8 @@
 package com.pagantis.singer.flows.it
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 import akka.actor.ActorSystem
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
@@ -12,14 +15,14 @@ import com.pagantis.singer.flows.BatchHttp.clazz
 import com.pagantis.singer.flows.Request
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Inside, Matchers}
 import spray.json.DefaultJsonProtocol
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.Try
 import spray.json._
 
-class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with ScalaFutures {
+class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with ScalaFutures with Inside {
 
   // init actor system, loggers and execution context
   implicit val system: ActorSystem = ActorSystem("BatchHttp")
@@ -66,6 +69,11 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
         )
         fields("response") shouldBe a[JsArray]
         fields("context") shouldBe JsString("CvKL8")
+        inside (fields("extracted_at")) {
+          case JsString(extractedAt) =>
+            LocalDateTime.parse(extractedAt, DateTimeFormatter.ISO_DATE_TIME) shouldBe a[LocalDateTime]
+          case _ => fail
+        }
       }
     }
 
@@ -90,6 +98,11 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
           "body" -> JsString("bar"),
           "userId" -> JsNumber(1)
         )
+        inside (fields("extracted_at")) {
+          case JsString(extractedAt) =>
+            LocalDateTime.parse(extractedAt, DateTimeFormatter.ISO_DATE_TIME) shouldBe a[LocalDateTime]
+          case _ => fail
+        }
       }
     }
 
