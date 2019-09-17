@@ -30,6 +30,7 @@ object BatchHttp extends App {
   val config = ConfigFactory.load()
 
   val endpoint = config.getString("flow.endpoint")
+  val port = config.getInt("flow.port")
   val parallelism = config.getInt("flow.parallelism")
   val frameLength = config.getInt("flow.frame_length")
 
@@ -56,7 +57,7 @@ object BatchHttp extends App {
         }
       )
       .log(clazz)
-      .via(Http().cachedHostConnectionPoolHttps[Request](host = endpoint))
+      .via(Http().cachedHostConnectionPoolHttps[Request](host = endpoint, port = port))
       .log(clazz)
       .mapAsync(parallelism)(parseResponse(_))
       .log(clazz)
