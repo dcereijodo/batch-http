@@ -6,7 +6,12 @@ import java.time.format.DateTimeFormatter
 import akka.actor.Actor
 import spray.json.{JsNumber, JsObject, JsString}
 
-// A sideways actor will maintain state
+/**
+  * This is a helper actor that is instantiated on start up and receives messages
+  * from the main [[BatchHttp]] stream on every record processed. It maintains
+  * an internal counter of the current execution state and logs this information
+  * accordingly
+  */
 class CountLogger extends Actor with akka.actor.ActorLogging {
   var total: Long = 0
   val startTime: LocalDateTime = LocalDateTime.now()

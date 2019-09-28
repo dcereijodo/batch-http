@@ -75,7 +75,6 @@ object BatchHttp extends App {
   Await.ready(flowComputation, Duration.Inf)
   Await.ready(shutdownSequence, Duration.Inf)
 
-
   flowComputation.value match {
     case Some(Success(_)) => sys.exit(0)
     case _ => sys.exit(1)
