@@ -37,7 +37,7 @@ object BatchHttp extends App {
   // This shutdown sequence was copied from another related issue: https://github.com/akka/akka-http/issues/907#issuecomment-345288919
   def shutdownSequence = {
     for {
-      http <- Http().shutdownAllConnectionPools()
+      _ <- Http().shutdownAllConnectionPools()
       akka <- system.terminate()
     } yield akka
   }

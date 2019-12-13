@@ -27,18 +27,18 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
   // init actor system, loggers and execution context
   implicit val system: ActorSystem = ActorSystem("BatchHttp")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
-  implicit val standardLogger: LoggingAdapter = Logging(system, clazz)
+  implicit val standardLogger: LoggingAdapter = Logging(system, getClass.getName)
   implicit val ec: ExecutionContextExecutor = system.dispatcher
 
-  implicit val connectionPool = Http().cachedHostConnectionPoolHttps[Request]("jsonplaceholder.typicode.com")
+  private implicit val connectionPool: Flow[(HttpRequest, Request), (Try[HttpResponse], Request), HostConnectionPool] =
+    Http().cachedHostConnectionPoolHttps[Request]("jsonplaceholder.typicode.com")
 
-  implicit val defaultPatience =
+  private implicit val defaultPatience: PatienceConfig =
     PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
 
   import Request._
 
-  def makeRequestAndHandle(line: String)(implicit connectionPool: Flow[(HttpRequest, Request),(Try[HttpResponse], Request), HostConnectionPool]) = {
-
+  private def makeRequestAndHandle(line: String)(implicit connectionPool: Flow[(HttpRequest, Request),(Try[HttpResponse], Request), HostConnectionPool]) = {
     Source.single(line)
       .map(
         line => {
@@ -53,18 +53,20 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
   }
 
   "Request" should "get comments by post_id" in {
-
-    whenReady(makeRequestAndHandle("""{"query": {"post_id": 1}, "path": "/comments"}""")) {
+    whenReady(makeRequestAndHandle("""{"request": {"get": {"query": {"post_id": 1}, "path": "/comments"}}}""")) {
       response => response.parseJson.asJsObject.fields("response") shouldBe a[JsArray]
     }
 
-    whenReady(makeRequestAndHandle("""{"query": {"post_id": 1}, "path": "/comments", "context": "CvKL8"}""")) {
+    whenReady(makeRequestAndHandle("""{"request": {"get": {"query": {"post_id": 1}, "path": "/comments"}}, "context": "CvKL8"}""")) {
       response => {
         val responseAsJson = response.parseJson.asJsObject
         val fields = responseAsJson.fields
         fields("request") shouldBe JsObject(
-          "query" -> JsObject(
-            "post_id" -> JsNumber(1)
+          "get" -> JsObject(
+            "query" -> JsObject(
+              "post_id" -> JsNumber(1)
+            ),
+            "path" -> JsString("/comments")
           )
         )
         fields("response") shouldBe a[JsArray]
@@ -76,20 +78,21 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
         }
       }
     }
-
   }
 
   "Request" should "post posts with user_id" in {
-
-    whenReady(makeRequestAndHandle("""{"body": {"userId": 1, "title": "foo", "body": "bar"}, "path": "/posts"}""")) {
+    whenReady(makeRequestAndHandle("""{"request": {"post": {"body": {"userId": 1, "title": "foo", "body": "bar"}, "path": "/posts"}}}""")) {
       response => {
         val responseAsJson = response.parseJson.asJsObject
         val fields = responseAsJson.fields
         fields("request") shouldBe JsObject(
-          "body" -> JsObject(
-            "title" -> JsString("foo"),
-            "body" -> JsString("bar"),
-            "userId" -> JsNumber(1)
+          "post" -> JsObject(
+            "body" -> JsObject(
+              "title" -> JsString("foo"),
+              "body" -> JsString("bar"),
+              "userId" -> JsNumber(1)
+            ),
+            "path" -> JsString("/posts")
           )
         )
         fields("response") shouldBe JsObject(
@@ -105,8 +108,6 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
         }
       }
     }
-
   }
-
 }
 
