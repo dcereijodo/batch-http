@@ -99,7 +99,8 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
       case Some(JsObject(fields)) => Query(
         fields.mapValues {
           case JsString(value) => value
-          case value => throw InvalidRequestException(s"invalid query parameter $value: it must be a string")
+          case JsNumber(value) => value.toString
+          case value => throw InvalidRequestException(s"invalid query parameter $value: it must be a string or a number")
         } ++ Request.extraParams
       )
       case None if Request.extraParams.nonEmpty => Query(Request.extraParams)
@@ -112,7 +113,8 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
     rawHeaders match {
       case Some(JsObject(fields)) => fields map {
         case (header, JsString(value)) => RawHeader(header, value)
-        case header => throw InvalidRequestException(s"invalid header $header: it must be a string")
+        case (header, JsNumber(value)) => RawHeader(header, value.toString)
+        case header => throw InvalidRequestException(s"invalid header $header: it must be a string or a number")
       } toList
       case None => List()
       case _ => throw InvalidRequestException("'headers' member must be key-value map")
