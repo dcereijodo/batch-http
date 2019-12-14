@@ -4,7 +4,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpMethod, HttpMethods, HttpRequest, HttpResponse, RequestEntity, Uri}
-import akka.http.scaladsl.model.Uri.{Path, Query}
+import akka.http.scaladsl.model.Uri.Query
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream.Materializer
 import akka.util.ByteString
@@ -96,7 +96,12 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
 
   private def buildQuery(rawQuery: Option[JsValue]): Query = {
     rawQuery match {
-      case Some(JsObject(fields)) => Query(fields.mapValues(_.toString) ++ Request.extraParams)
+      case Some(JsObject(fields)) => Query(
+        fields.mapValues {
+          case JsString(value) => value
+          case value => throw InvalidRequestException(s"invalid query parameter $value: it must be a string")
+        } ++ Request.extraParams
+      )
       case None if Request.extraParams.nonEmpty => Query(Request.extraParams)
       case None => Query()
       case _ => throw InvalidRequestException("'query' member must be key-value map")
@@ -105,7 +110,10 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
 
   private def buildHeaders(rawHeaders: Option[JsValue]): List[HttpHeader] = {
     rawHeaders match {
-      case Some(JsObject(fields)) => fields map { case (header, value) => RawHeader(header, value.toString) } toList
+      case Some(JsObject(fields)) => fields map {
+        case (header, JsString(value)) => RawHeader(header, value)
+        case header => throw InvalidRequestException(s"invalid header $header: it must be a string")
+      } toList
       case None => List()
       case _ => throw InvalidRequestException("'headers' member must be key-value map")
     }
@@ -132,7 +140,7 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
   }
 
   def toAkkaRequest: HttpRequest = {
-    val headers = buildHeaders(methodContents.get("header"))
+    val headers = buildHeaders(methodContents.get("headers"))
     val entity = buildBody(methodContents.get("body") )
     val uri = buildUri(methodContents.get("path"), methodContents.get("query"))
 
