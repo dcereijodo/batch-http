@@ -121,17 +121,11 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
     }
   }
 
-  private def buildUri(optDomain: Option[JsValue], optPath: Option[JsValue], optQueryRaw: Option[JsValue]): Uri = {
-    val path = optPath match {
-      case Some(JsString(path)) => path
+  private def buildUri(optPath: Option[JsValue], optQueryRaw: Option[JsValue]): Uri = {
+    val uri = optPath match {
+      case Some(JsString(path)) => Uri.from(path = path)
       case Some(_) => throw InvalidRequestException("'path' must be an JSON string")
-      case None => Request.defaultPath
-    }
-
-    val uri = optDomain match {
-      case Some(JsString(domain)) =>  Uri.from(host = domain, path = path)
-      case Some(_) => throw InvalidRequestException("'domain' must be an JSON string")
-      case None => Uri.from(path = path)
+      case None => Uri.from(path = Request.defaultPath)
     }
 
     uri.withQuery(buildQuery(optQueryRaw))
@@ -140,7 +134,7 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
   def toAkkaRequest: HttpRequest = {
     val headers = buildHeaders(methodContents.get("header"))
     val entity = buildBody(methodContents.get("body") )
-    val uri = buildUri(methodContents.get("domain"), methodContents.get("path"), methodContents.get("query"))
+    val uri = buildUri(methodContents.get("path"), methodContents.get("query"))
 
     HttpRequest(
       method = method,
