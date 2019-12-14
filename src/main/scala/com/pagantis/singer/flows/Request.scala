@@ -29,7 +29,6 @@ object Request {
   private val defaultPath = config.getString("flow.path")
 
   def fromLine(line: String): Request = {
-
     val message = line.parseJson
     val rootFields = message.asJsObject.fields
     val request = rootFields.get("request")
@@ -47,8 +46,6 @@ object Request {
         }
       case _ => throw new InvalidRequestException
     }
-
-
   }
 
   def parseResponse(triedResponse: (Try[HttpResponse], Request))(implicit am: Materializer): Future[String] = {
@@ -95,25 +92,25 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
     JsObject(outputKeys).compactPrint
   }
 
-  private def buildQueryString(query: Option[JsValue]) = {
-    query match {
-      case Some(JsObject(fields)) => Some(fields.mapValues(_.toString) ++ Request.extraParams)
-      case None if Request.extraParams.nonEmpty => Some(Request.extraParams)
-      case None => None
+  private def buildQuery(rawQuery: Option[JsValue]): Query = {
+    rawQuery match {
+      case Some(JsObject(fields)) => Query(fields.mapValues(_.toString) ++ Request.extraParams)
+      case None if Request.extraParams.nonEmpty => Query(Request.extraParams)
+      case None => Query()
       case _ => throw InvalidRequestException("'query' member must be key-value map")
     }
   }
 
-  private def buildHeaders(headers: Option[JsValue]): List[HttpHeader] = {
-    headers match {
+  private def buildHeaders(rawHeaders: Option[JsValue]): List[HttpHeader] = {
+    rawHeaders match {
       case Some(JsObject(fields)) => fields map { case (header, value) => RawHeader(header, value.toString) } toList
       case None => List()
       case _ => throw InvalidRequestException("'headers' member must be key-value map")
     }
   }
 
-  private def buildBody(body: Option[JsValue]): RequestEntity = {
-    body match {
+  private def buildBody(rawBody: Option[JsValue]): RequestEntity = {
+    rawBody match {
       case Some(body) => body match {
         case JsObject(_) => HttpEntity(ContentTypes.`application/json`, body.compactPrint)
         case _ => throw InvalidRequestException("'body' must be a full JSON object")
@@ -122,17 +119,30 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
     }
   }
 
+  private def buildUri(optDomain: Option[JsValue], optPath: Option[JsValue], optQueryRaw: Option[JsValue]): Uri = {
+    val path = optPath match {
+      case Some(JsString(path)) => path
+      case Some(_) => throw InvalidRequestException("'path' must be an JSON string")
+      case None => Request.defaultPath
+    }
+
+    val uri = optDomain match {
+      case Some(JsString(domain)) =>  Uri.from(host = domain, path = path)
+      case Some(_) => throw InvalidRequestException("'domain' must be an JSON string")
+      case None => Uri.from(path = path)
+    }
+
+    uri.withQuery(buildQuery(optQueryRaw))
+  }
+
   def toAkkaRequest: HttpRequest = {
-    val queryString = buildQueryString(methodContents.get("query"))
     val headers = buildHeaders(methodContents.get("header"))
     val entity = buildBody(methodContents.get("body") )
+    val uri = buildUri(methodContents.get("domain"), methodContents.get("path"), methodContents.get("query"))
 
     HttpRequest(
       method = method,
-      uri = methodContents.get("path") match {
-        case Some(JsString(path)) => Uri(path = Path(path), queryString = queryString.map(Query(_).toString))
-        case _ => Uri(path = Path(Request.defaultPath), queryString = queryString.map(Query(_).toString))
-      },
+      uri = uri,
       headers = headers,
       entity = entity
     )
