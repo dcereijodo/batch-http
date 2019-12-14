@@ -53,13 +53,14 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
 
   "Request" should "get comments by post_id" in {
     whenReady(makeRequestAndHandle("""{"request": {"method": "GET", "query": {"post_id": 1}, "path": "/comments"}}""")) {
-      response => response.parseJson.asJsObject.fields("response") shouldBe a[JsArray]
+      response => response.parseJson.asJsObject.fields("response").asJsObject.fields("body") shouldBe a[JsArray]
     }
 
     whenReady(makeRequestAndHandle("""{"request": {"method": "GET", "query": {"post_id": 1}, "path": "/comments"}, "context": "CvKL8"}""")) {
-      response => {
-        val responseAsJson = response.parseJson.asJsObject
+      responseRaw => {
+        val responseAsJson = responseRaw.parseJson.asJsObject
         val fields = responseAsJson.fields
+
         fields("request") shouldBe JsObject(
           "method" -> JsString("GET"),
           "query" -> JsObject(
@@ -67,9 +68,12 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
           ),
           "path" -> JsString("/comments")
         )
-        fields("response") shouldBe a[JsArray]
+
+        val responseFields = fields("response").asJsObject.fields
+        responseFields("body") shouldBe a[JsArray]
         fields("context") shouldBe JsString("CvKL8")
-        inside (fields("extracted_at")) {
+
+        inside (responseFields("responded_at")) {
           case JsString(extractedAt) =>
             LocalDateTime.parse(extractedAt, DateTimeFormatter.ISO_DATE_TIME) shouldBe a[LocalDateTime]
           case _ => fail
@@ -80,9 +84,10 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
 
   "Request" should "post posts with user_id" in {
     whenReady(makeRequestAndHandle("""{"request": {"method": "POST", "body": {"userId": 1, "title": "foo", "body": "bar"}, "path": "/posts"}}""")) {
-      response => {
-        val responseAsJson = response.parseJson.asJsObject
+      responseRaw => {
+        val responseAsJson = responseRaw.parseJson.asJsObject
         val fields = responseAsJson.fields
+
         fields("request") shouldBe JsObject(
           "method" -> JsString("POST"),
           "body" -> JsObject(
@@ -92,13 +97,16 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
           ),
           "path" -> JsString("/posts")
         )
-        fields("response") shouldBe JsObject(
+
+        val response = fields("response")
+        response.asJsObject.fields("body") shouldBe JsObject(
           "id" -> JsNumber(101),
           "title" -> JsString("foo"),
           "body" -> JsString("bar"),
           "userId" -> JsNumber(1)
         )
-        inside (fields("extracted_at")) {
+
+        inside (response.asJsObject.fields("responded_at")) {
           case JsString(extractedAt) =>
             LocalDateTime.parse(extractedAt, DateTimeFormatter.ISO_DATE_TIME) shouldBe a[LocalDateTime]
           case _ => fail

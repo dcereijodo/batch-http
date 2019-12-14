@@ -80,8 +80,10 @@ case class Request(method: HttpMethod, methodContents: Map[String, JsValue], con
     val requestAndResponse =
       Map(
         "request" -> request,
-        "response" -> response,
-        "extracted_at" -> JsString(extractedAt.format(DateTimeFormatter.ISO_DATE_TIME))
+        "response" -> JsObject(
+          "body" -> response,
+          "responded_at" -> JsString(extractedAt.format(DateTimeFormatter.ISO_DATE_TIME))
+        )
       )
 
     val outputKeys = context match {
