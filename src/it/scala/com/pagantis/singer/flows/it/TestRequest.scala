@@ -11,7 +11,6 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
 import akka.stream.scaladsl.{Sink, Source}
-import com.pagantis.singer.flows.BatchHttp.clazz
 import com.pagantis.singer.flows.Request
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -53,21 +52,20 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
   }
 
   "Request" should "get comments by post_id" in {
-    whenReady(makeRequestAndHandle("""{"request": {"get": {"query": {"post_id": 1}, "path": "/comments"}}}""")) {
+    whenReady(makeRequestAndHandle("""{"request": {"method": "GET", "query": {"post_id": 1}, "path": "/comments"}}""")) {
       response => response.parseJson.asJsObject.fields("response") shouldBe a[JsArray]
     }
 
-    whenReady(makeRequestAndHandle("""{"request": {"get": {"query": {"post_id": 1}, "path": "/comments"}}, "context": "CvKL8"}""")) {
+    whenReady(makeRequestAndHandle("""{"request": {"method": "GET", "query": {"post_id": 1}, "path": "/comments"}, "context": "CvKL8"}""")) {
       response => {
         val responseAsJson = response.parseJson.asJsObject
         val fields = responseAsJson.fields
         fields("request") shouldBe JsObject(
-          "get" -> JsObject(
-            "query" -> JsObject(
-              "post_id" -> JsNumber(1)
-            ),
-            "path" -> JsString("/comments")
-          )
+          "method" -> JsString("GET"),
+          "query" -> JsObject(
+            "post_id" -> JsNumber(1)
+          ),
+          "path" -> JsString("/comments")
         )
         fields("response") shouldBe a[JsArray]
         fields("context") shouldBe JsString("CvKL8")
@@ -81,19 +79,18 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
   }
 
   "Request" should "post posts with user_id" in {
-    whenReady(makeRequestAndHandle("""{"request": {"post": {"body": {"userId": 1, "title": "foo", "body": "bar"}, "path": "/posts"}}}""")) {
+    whenReady(makeRequestAndHandle("""{"request": {"method": "POST", "body": {"userId": 1, "title": "foo", "body": "bar"}, "path": "/posts"}}""")) {
       response => {
         val responseAsJson = response.parseJson.asJsObject
         val fields = responseAsJson.fields
         fields("request") shouldBe JsObject(
-          "post" -> JsObject(
-            "body" -> JsObject(
-              "title" -> JsString("foo"),
-              "body" -> JsString("bar"),
-              "userId" -> JsNumber(1)
-            ),
-            "path" -> JsString("/posts")
-          )
+          "method" -> JsString("POST"),
+          "body" -> JsObject(
+            "title" -> JsString("foo"),
+            "body" -> JsString("bar"),
+            "userId" -> JsNumber(1)
+          ),
+          "path" -> JsString("/posts")
         )
         fields("response") shouldBe JsObject(
           "id" -> JsNumber(101),
