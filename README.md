@@ -59,17 +59,18 @@ The results is a JSON line which gets printed to the `stdout` with both the `req
 }
 ```
 
-In general, to represent the HTTP request as a JSON object you should consider the following rules:
-* Wrap your request in a `request` object in the root. This will keep alignment with the response representation, which will contain the `request` and the `response`.
-* Inside your `request`, use a `method` field to indicate the [HTTP method](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) to be used in the request. If no method is provided and no default method is configured, `GET` will be used.
+In general, to represent the HTTP request as a JSON object some rules are contemplated ([#17](https://github.com/digitalorigin/batch-http/issues/17))
+* The request must be wrapped in a `request` object in the JSON root.
+* Inside the `request`, a `method` field can be used to indicate the [HTTP method](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) for the request. If no method is provided and no default method is configured, `GET` will be used.
 * The following attributes can also be specified to further refine the request.
-  * A `path` string for passing the path to be used in the request. If no path is provided in the request or in the configuration, `/` will be used as default.
-  * A `query` object for passing a set of key-value query parameters to be used in the request
-  * A `headers` object for passing a set of key-value headers to be used in the request
-  * A `body` object (for `POST` method only) for sending a generic JSON object in the request body
-* A response is represented in `response` object in the root. A `response` can also contain `headers` and `body`. The response status is represented in a `status` field.
+  * A `path` string for passing the path to be used in the request. If no path is provided in the request or in the configuration, `/` will be used.
+  * A `query` object for passing a set of key-value query parameters to be used in the request.
+  * A `headers` object for passing a set of key-value headers to be used in the request.
+  * A `body` object for sending a generic JSON object in the request body.
+* A response is represented in a `response` object in the root. A `response` can contain `headers` and `body` as well. The response status is represented in a `status` field.
 * Optionally a `context` object can also be passed in the root to allow for context propagation. This allows annotating input records with metadata which will not be used in the request ([#3](https://github.com/dcereijodo/batch-http/issues/3))
-* Any object or key not specified above will be simply ignored.
+
+Any object or key not specified above will be simply ignored.
 
 
 ## Configuration
