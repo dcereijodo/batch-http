@@ -1,25 +1,27 @@
 # BatchHttp [![CircleCI](https://circleci.com/gh/digitalorigin/batch-http.svg?style=svg&circle-token=d196d5b828e9e0debb5c25f04e7279c1f342d675)](https://circleci.com/gh/digitalorigin/batch-http)
-A tool for processing data batches through a REST API. It reads the `stdin` for JSON lines, converts each line to an HTTP call and
-then it makes the call. Finally it prints both the input line and the response to the `stdout`.
+A tool for processing HTTP request batches through a REST API. It reads the `stdin` for JSON lines representing HTTP requests,
+converts each line to an HTTP and executes it, providing both the request and the response as an output in the `stdout`.
 
-For example, when passed a JSON string (compacted in a single line)
-
+For example, when passed a JSON string such as
 ```json
  {
-   "query": {
-     "address": "1600 Amphitheatre Parkway, Mountain View, 9090",
-     "region":"es",
-     "language":"es"
-   }
+  "request": {
+    "method": "GET",
+    "path": "/maps/api/geocode/",
+    "query": {
+      "address": "1600 Amphitheatre Parkway, Mountain View, 9090",
+      "region":"es",
+      "language":"es"
+    }
+  }
  }
 ```
-
-it will make a request with a query parameters string
+provided the `endpoint` configuration value is set to `maps.googleapis.com`, it will make a `GET` request to the endpoint on
 ```console
-region=es&language=es&address=1600+Amphitheatre+Parkway,+Mountain+View,+CA
+https://maps.googleapis.com/maps/api/geocode/region=es&language=es&address=1600+Amphitheatre+Parkway,+Mountain+View,+CA
 ```
-The `endpoint` and `path` of the request can defined in the `application.conf` configuration file or they can be
-overridden by the `endpoint` and `path` keys in the input JSON payload (takes precedence). The configuration
+The `endpoint` and `port` of the requests must be defined in the `application.conf` configuration file, whilst the `path`
+can be defined both in the configuration or in the `request` object takes precedence). The configuration
 file also supports additional secret query parameters. So with the following configuration file we can make a
 request to the [Google Geocoding service](https://developers.google.com/maps/documentation/geocoding/intro).
 ```hocon
@@ -27,7 +29,6 @@ request to the [Google Geocoding service](https://developers.google.com/maps/doc
 flow {
 
   endpoint = "maps.googleapis.com"
-  path = "/maps/api/geocode/json"
 
   # additional parameters to be inculded in the http query if any
   extra_params {
@@ -40,6 +41,8 @@ The results is a JSON line which gets printed to the `stdout` with both the `req
 ```json
 {
   "request": {
+    "method": "GET",
+    "path": "/maps/api/geocode/",
     "query": {
       "address": "1600 Amphitheatre Parkway, Mountain View, 9090",
       "region":"es",
@@ -56,14 +59,18 @@ The results is a JSON line which gets printed to the `stdout` with both the `req
 }
 ```
 
-- If a `query` object is passed in the JSON, a request will be created with all parameters inside
-the object as URL parameters. `GET` method will be used.
+In general, to represent the HTTP request as a JSON object you should consider the following rules:
+* Wrap your request in a `request` object in the root. This will keep alignment with the response representation, which will contain the `request` and the `response`.
+* Inside your `request`, use a `method` field to indicate the [HTTP method](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) to be used in the request. If no method is provided and no default method is configured, `GET` will be used.
+* The following attributes can also be specified to further refine the request.
+  * A `path` string for passing the path to be used in the request. If no path is provided in the request or in the configuration, `/` will be used as default.
+  * A `query` object for passing a set of key-value query parameters to be used in the request
+  * A `headers` object for passing a set of key-value headers to be used in the request
+  * A `body` object (for `POST` method only) for sending a generic JSON object in the request body
+* A response is represented in `response` object in the root. A `response` can also contain `headers` and `body`. The response status is represented in a `status` field.
+* Optionally a `context` object can also be passed in the root to allow for context propagation. This allows annotating input records with metadata which will not be used in the request ([#3](https://github.com/dcereijodo/batch-http/issues/3))
+* Any object or key not specified above will be simply ignored.
 
-- If a `body` object is passed in the JSON, a request will be created with the contents of `body`
-in the request body. `POST` method will be used.
-
-Whatever is passed in the input JSON in the `context` key it will be propagated unaltered to the result.
-This allows annotating input records with metadata which will not be used in the request ([#3](https://github.com/dcereijodo/batch-http/issues/3))
 
 ## Configuration
 You can find examples and descriptions for all configurations supported by `batch-http` in the [sample configuration file](src/main/resources/application.conf). All this properties can be overridden on invocation by providing appropriate [JVM arguments](https://github.com/lightbend/config).
