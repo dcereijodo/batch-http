@@ -21,7 +21,7 @@ provided the `endpoint` configuration value is set to `maps.googleapis.com`, it 
 https://maps.googleapis.com/maps/api/geocode/region=es&language=es&address=1600+Amphitheatre+Parkway,+Mountain+View,+CA
 ```
 The `endpoint` and `port` of the requests must be defined in the `application.conf` configuration file, whilst the `path`
-can be defined both in the configuration or in the `request` object takes precedence). The configuration
+can be defined both in the configuration or in the `request` object (the second takes precedence). The configuration
 file also supports additional secret query parameters. So with the following configuration file we can make a
 request to the [Google Geocoding service](https://developers.google.com/maps/documentation/geocoding/intro).
 ```hocon
