@@ -37,7 +37,8 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with I
   }
 
   "Request" should "create GET request" in {
-    val request = Request.fromLine(wrapRequest(get).compactPrint)
+    val context = JsString("some_id")
+    val request = Request.fromLine(wrapRequest(get, Some(context)).compactPrint)
 
     inside(request.toAkkaRequest) {
       case HttpRequest(HttpMethods.GET, _, headers, _, _) =>
@@ -45,7 +46,6 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with I
       case _ => fail
     }
 
-    val context = JsString("some_id")
     inside(request) {
       case Request(method, _, Some(requestContext)) =>
         method shouldBe HttpMethods.GET
