@@ -33,7 +33,7 @@ class TestRequest extends FlatSpec with Matchers with DefaultJsonProtocol with S
     Http().cachedHostConnectionPoolHttps[Request]("jsonplaceholder.typicode.com")
 
   private implicit val defaultPatience: PatienceConfig =
-    PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
+    PatienceConfig(timeout = Span(10, Seconds), interval = Span(5, Millis))
 
   import Request._
 
