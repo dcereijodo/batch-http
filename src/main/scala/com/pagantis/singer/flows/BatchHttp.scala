@@ -48,6 +48,12 @@ object BatchHttp extends App {
     throttleOrNeutral.via(connectionPool)
   }
 
+  // init actor system, loggers and execution context
+  implicit val system: ActorSystem = ActorSystem("BatchHttp")
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val standardLogger: LoggingAdapter = Logging(system, clazz)
+  implicit val ec: ExecutionContextExecutor = system.dispatcher
+
   // This shutdown sequence was copied from another related issue: https://github.com/akka/akka-http/issues/907#issuecomment-345288919
   def shutdownSequence = {
     for {
